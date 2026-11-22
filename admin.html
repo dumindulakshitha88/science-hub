@@ -21,40 +21,83 @@ input,select{width:100%;padding:11px 12px;border-radius:10px;border:1px solid va
 @media (max-width:520px){.row{grid-template-columns:1fr}}
 </style></head><body><main>
 <h1>Admin helper</h1>
-<p>Add or remove files, then download the updated site and upload it to your host. Nothing here changes the live site by itself.</p>
+<p>Add or remove files and press Publish. Changes are saved straight to GitHub and the site updates by itself in about 30 seconds.</p>
 
-<div class="panel"><h2>Add files</h2>
+<div class="panel"><h2>1. GitHub token (one time)</h2>
+<p id="tstate">No token saved on this device yet.</p>
+<input id="tok" type="password" placeholder="Paste GitHub token here" autocomplete="off">
+<input id="repo" placeholder="GitHub repo (owner/name)" value="dumindulakshitha88/science-hub">
+<input id="pre" placeholder="Folder inside repo (leave empty if files are at the top)">
+<button class="btn" id="savetok">Save on this device</button>
+<p style="font-size:13px">The token is stored only in this browser, never in the site's code. Without it nobody can change the site.</p></div>
+
+<div class="panel"><h2>2. Add files</h2>
 <div class="row"><select id="y"><option>1</option><option>2</option><option>3</option><option>4</option></select><select id="s"><option>1</option><option>2</option></select></div>
 <p style="margin-top:0">Year (left) and semester (right)</p>
 <input id="sub" placeholder="Subject (e.g. CHEM 1101)">
 <select id="t"><option>Past Paper</option><option>Tutorial</option><option>Lecture Note</option><option>Assessment</option></select>
 <input id="fl" type="file" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,image/*">
-<p style="margin:4px 0 8px"><b>OR</b> add a Google Drive link (file must be shared as "Anyone with the link")</p>
+<div id="new"></div>
+<p style="margin:10px 0 8px"><b>OR</b> add a Google Drive link (share it as "Anyone with the link")</p>
 <input id="dt" placeholder="Title for the Drive file">
-<input id="dl" placeholder="Paste Google Drive link here">
-<div id="new"></div></div>
+<input id="dl" placeholder="Paste Google Drive link here"></div>
 
 <div class="panel"><h2>Files on the site now</h2><div id="cur"><p>Loading...</p></div></div>
 
-<div class="panel"><h2>Build updated site</h2>
-<p id="msg">Choose files above (or tick files to remove), then press the button.</p>
-<button class="btn" id="build">Build updated site</button></div>
+<div class="panel"><h2>3. Publish</h2>
+<p id="msg">Choose files or a Drive link (or tick files to remove), then press Publish.</p>
+<button class="btn" id="build">Publish to site</button></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let cur=[],remove=new Set();
 const msg=t=>{$("msg").textContent=t};
 const slug=n=>n.toLowerCase().replace(/[^a-z0-9.]+/g,"-").replace(/^-+|-+$/g,"")||"file";
+const store={get:k=>{try{return localStorage.getItem(k)||""}catch(e){return ""}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
 
-fetch("files.json",{cache:"no-store"}).then(r=>r.json()).then(d=>{cur=Array.isArray(d)?d:[];drawCur()}).catch(()=>{$("cur").innerHTML="<p>Could not read files.json. Open this page from your live site, not from your phone's files.</p>"});
+// ---- settings ----
+function showTok(){$("tstate").textContent=store.get("gh_token")?"Token saved on this device. You can publish now.":"No token saved on this device yet.";if(store.get("gh_repo"))$("repo").value=store.get("gh_repo");$("pre").value=store.get("gh_pre")}
+$("savetok").onclick=()=>{
+  const t=$("tok").value.trim();
+  if(t)store.set("gh_token",t);
+  store.set("gh_repo",$("repo").value.trim());store.set("gh_pre",$("pre").value.trim());
+  $("tok").value="";showTok();
+};
+showTok();
+
+// ---- GitHub helpers ----
+const repo=()=>$("repo").value.trim().replace(/^\/|\/$/g,"");
+const pre=()=>{const p=$("pre").value.trim().replace(/^\/+|\/+$/g,"");return p?p+"/":""};
+const enc64=str=>btoa(unescape(encodeURIComponent(str)));
+const dec64=b=>decodeURIComponent(escape(atob(b.replace(/\s/g,""))));
+const fileB64=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(",")[1]);r.onerror=()=>rej(new Error("Cannot read "+f.name));r.readAsDataURL(f)});
+async function gh(path,opts={}){
+  const tok=store.get("gh_token");
+  const r=await fetch("https://api.github.com/repos/"+repo()+"/contents/"+path.split("/").map(encodeURIComponent).join("/")+(opts.query||""),{
+    method:opts.method||"GET",
+    headers:{Authorization:"Bearer "+tok,Accept:"application/vnd.github+json","Content-Type":"application/json"},
+    body:opts.body?JSON.stringify(opts.body):undefined,cache:"no-store"});
+  if(r.status===404&&!opts.method)return null;
+  if(r.status===401||r.status===403)throw new Error("GitHub says the token is wrong, expired or has no write permission.");
+  if(r.status===404)throw new Error("Repo or folder not found. Check the repo name.");
+  if(r.status===409||r.status===422)throw new Error("GitHub conflict ("+r.status+"). Press Publish once more.");
+  if(!r.ok)throw new Error("GitHub error "+r.status);
+  return r.json();
+}
+const getFile=p=>gh(p,{query:"?ref=main"});
+const putFile=(p,b64,m,sha)=>gh(p,{method:"PUT",body:{message:m,content:b64,branch:"main",...(sha?{sha}:{})}});
+const delFile=(p,m,sha)=>gh(p,{method:"DELETE",body:{message:m,sha,branch:"main"}});
+
+// ---- current list (read from the live site) ----
+fetch("files.json",{cache:"no-store"}).then(r=>r.json()).then(d=>{cur=Array.isArray(d)?d:[];drawCur()}).catch(()=>{$("cur").innerHTML="<p>Could not read files.json. Open this page from your live site.</p>"});
 function drawCur(){
+  remove=new Set();
   $("cur").innerHTML=cur.length?"":"<p>No files yet.</p>";
   cur.forEach((f,i)=>{
     const d=document.createElement("label");d.className="item";
-    d.innerHTML=`<input type="checkbox" aria-label="Remove"><div><b>${esc(f.title)}</b><small>Y${f.year} S${f.semester||f.sem} · ${esc(f.subject)} · ${esc(f.type)} (tick to remove)</small></div>`;
-    d.querySelector("input").onchange=e=>{e.target.checked?remove.add(i):remove.delete(i)};
+    d.innerHTML=`<input type="checkbox" aria-label="Remove"><div><b>${esc(f.title)}</b><small>Y${f.year} S${f.semester||f.sem} · ${esc(f.subject)} · ${esc(f.type)}${f.drive?" · Drive":""} (tick to remove)</small></div>`;
+    d.querySelector("input").onchange=e=>{e.target.checked?remove.add(JSON.stringify(f)):remove.delete(JSON.stringify(f))};
     $("cur").append(d);
   });
 }
@@ -66,40 +109,47 @@ $("fl").onchange=()=>{
     $("new").append(d);
   });
 };
+
+// ---- publish ----
 $("build").onclick=async()=>{
   const btn=$("build");
-  if(!window.JSZip){msg("The zip tool could not load. Check your internet and refresh.");return}
+  if(!store.get("gh_token")){msg("Save your GitHub token first (step 1).");return}
   const adds=[...$("fl").files];
   const sub=$("sub").value.trim();
-  if(adds.length&&!sub){msg("Type the subject first.");return}
   const dLink=$("dl").value.trim(),dTitle=$("dt").value.trim();
   const dId=(dLink.match(/\/d\/([\w-]+)/)||dLink.match(/[?&]id=([\w-]+)/)||[])[1];
   if(dLink&&!dId){msg("That does not look like a Google Drive file link.");return}
-  if(dLink&&!sub){msg("Type the subject first.");return}
+  if((adds.length||dLink)&&!sub){msg("Type the subject first.");return}
   if(!adds.length&&!dLink&&!remove.size){msg("Nothing to change yet.");return}
+  for(const f of adds){if(f.size>25*1024*1024){msg(f.name+" is over 25 MB. Put it on Google Drive and paste the link instead.");return}}
   btn.disabled=true;
   try{
-    const zip=new JSZip();
-    for(const n of ["index.html","admin.html"]){msg("Reading "+n+"...");const r=await fetch(n,{cache:"no-store"});if(!r.ok)throw new Error("Cannot read "+n);zip.file(n,await r.arrayBuffer())}
-    const out=[];
-    for(let i=0;i<cur.length;i++){
-      if(remove.has(i))continue;
-      const f=cur[i];out.push(f);
-      if(f.file){msg("Copying "+f.file+"...");const r=await fetch("files/"+encodeURIComponent(f.file),{cache:"no-store"});if(!r.ok)throw new Error("Cannot read "+f.file);zip.file("files/"+f.file,await r.arrayBuffer())}
+    const P=pre();
+    msg("Reading current file list from GitHub...");
+    const latest=await getFile(P+"files.json");
+    let list=[];
+    if(latest){try{const d=JSON.parse(dec64(latest.content));if(Array.isArray(d))list=d}catch(e){throw new Error("files.json on GitHub is not valid.")}}
+    // removals
+    const keep=[];
+    for(const f of list){
+      if(remove.has(JSON.stringify(f))){
+        if(f.file){msg("Removing "+f.file+"...");const x=await getFile(P+"files/"+f.file);if(x)await delFile(P+"files/"+f.file,"Remove "+f.file,x.sha)}
+      }else keep.push(f);
     }
+    // uploads
     const titles=[...document.querySelectorAll("#new input")];
     for(let i=0;i<adds.length;i++){
-      const f=adds[i];
-      const name=Date.now().toString(36)+"-"+slug(f.name);
-      zip.file("files/"+name,f);
-      out.push({year:+$("y").value,sem:+$("s").value,subject:sub,type:$("t").value,title:(titles[i]?.value||f.name).trim(),file:name});
+      const f=adds[i];const name=Date.now().toString(36)+"-"+slug(f.name);
+      msg("Uploading "+f.name+" ("+(i+1)+"/"+adds.length+")...");
+      await putFile(P+"files/"+name,await fileB64(f),"Add "+name);
+      keep.push({year:+$("y").value,sem:+$("s").value,subject:sub,type:$("t").value,title:(titles[i]?.value||f.name).trim(),file:name});
     }
-    if(dId)out.push({year:+$("y").value,sem:+$("s").value,subject:sub,type:$("t").value,title:dTitle||"Google Drive file",drive:"https://drive.google.com/file/d/"+dId+"/view"});
-    zip.file("files.json",JSON.stringify(out,null,2));
-    msg("Packing...");
-    const blob=await zip.generateAsync({type:"blob"});
-    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="science-hub-site.zip";document.body.append(a);a.click();a.remove();
-    msg("Done. Upload science-hub-site.zip to your host to publish the changes.");
+    if(dId)keep.push({year:+$("y").value,sem:+$("s").value,subject:sub,type:$("t").value,title:dTitle||"Google Drive file",drive:"https://drive.google.com/file/d/"+dId+"/view"});
+    msg("Saving file list...");
+    await putFile(P+"files.json",enc64(JSON.stringify(keep,null,2)),"Update file list",latest&&latest.sha);
+    cur=keep;drawCur();
+    $("fl").value="";$("new").innerHTML="";$("dl").value="";$("dt").value="";
+    msg("Done! Saved to GitHub. The site updates in about 30 seconds.");
   }catch(e){msg("Failed: "+(e.message||e))}
   btn.disabled=false;
 };
