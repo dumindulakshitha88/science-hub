@@ -252,6 +252,34 @@ function renderStudent(main){
   }
 }
 render();
-fetch("files.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{files=Array.isArray(d)?d:[];loaded=true;render()}).catch(()=>{failed=true;loaded=true;render()});
+// Google Sheet (published as CSV). Paste the CSV link between the quotes:
+const SHEET_CSV="https://docs.google.com/spreadsheets/d/e/2PACX-1vSMlVJ-SMnnYktL7Ct04JEDPmvWYzub92u1Qpoq2z6i-OBcWwNbq-iG7j6ZhisHR5kRlmN4LnRFXepS/pub?output=csv";
+function parseCSV(t){const rows=[];let r=[],c="",q=false;for(let i=0;i<t.length;i++){const ch=t[i];
+  if(q){if(ch==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=ch}
+  else if(ch==='"')q=true;else if(ch===","){r.push(c);c=""}
+  else if(ch==="\n"||ch==="\r"){if(ch==="\r"&&t[i+1]==="\n")i++;r.push(c);c="";rows.push(r);r=[]}
+  else c+=ch}
+  if(c||r.length){r.push(c);rows.push(r)}return rows}
+async function sheetFiles(){
+  if(!SHEET_CSV)return [];
+  try{
+    const r=await fetch(SHEET_CSV,{cache:"no-store"});if(!r.ok)return [];
+    const rows=parseCSV(await r.text()).filter(x=>x.some(v=>v.trim()));
+    if(rows.length<2)return [];
+    const h=rows[0].map(x=>x.trim().toLowerCase());
+    const ix=n=>h.findIndex(k=>n.includes(k));
+    const iy=ix(["year"]),is=ix(["semester","sem"]),isub=ix(["subject"]),it=ix(["type"]),ititle=ix(["title","name"]),il=ix(["link","url","drive"]);
+    return rows.slice(1).map(x=>{
+      const link=(x[il]||"").trim(),tt=(x[it]||"").trim();
+      const type=TYPES.find(k=>k.toLowerCase()===tt.toLowerCase())||tt||"Lecture Note";
+      const o={year:parseInt(x[iy]),sem:parseInt(x[is]),subject:(x[isub]||"").trim(),type,title:(x[ititle]||"").trim()};
+      if(/drive\.google\.com|docs\.google\.com/.test(link))o.drive=link;else o.url=link;
+      return o}).filter(f=>f.year>=1&&f.year<=4&&f.sem>=1&&f.sem<=2&&f.subject&&f.title&&(f.drive||f.url));
+  }catch(e){return []}
+}
+Promise.all([
+  fetch("files.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;return r.json()}),
+  sheetFiles()
+]).then(([d,sh])=>{files=(Array.isArray(d)?d:[]).concat(sh);loaded=true;render()}).catch(()=>{failed=true;loaded=true;render()});
 </script>
 </body></html>
