@@ -29,6 +29,9 @@ input,select{width:100%;padding:11px 12px;border-radius:10px;border:1px solid va
 <input id="sub" placeholder="Subject (e.g. CHEM 1101)">
 <select id="t"><option>Past Paper</option><option>Tutorial</option><option>Lecture Note</option><option>Assessment</option></select>
 <input id="fl" type="file" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,image/*">
+<p style="margin:4px 0 8px"><b>OR</b> add a Google Drive link (file must be shared as "Anyone with the link")</p>
+<input id="dt" placeholder="Title for the Drive file">
+<input id="dl" placeholder="Paste Google Drive link here">
 <div id="new"></div></div>
 
 <div class="panel"><h2>Files on the site now</h2><div id="cur"><p>Loading...</p></div></div>
@@ -69,7 +72,11 @@ $("build").onclick=async()=>{
   const adds=[...$("fl").files];
   const sub=$("sub").value.trim();
   if(adds.length&&!sub){msg("Type the subject first.");return}
-  if(!adds.length&&!remove.size){msg("Nothing to change yet.");return}
+  const dLink=$("dl").value.trim(),dTitle=$("dt").value.trim();
+  const dId=(dLink.match(/\/d\/([\w-]+)/)||dLink.match(/[?&]id=([\w-]+)/)||[])[1];
+  if(dLink&&!dId){msg("That does not look like a Google Drive file link.");return}
+  if(dLink&&!sub){msg("Type the subject first.");return}
+  if(!adds.length&&!dLink&&!remove.size){msg("Nothing to change yet.");return}
   btn.disabled=true;
   try{
     const zip=new JSZip();
@@ -87,6 +94,7 @@ $("build").onclick=async()=>{
       zip.file("files/"+name,f);
       out.push({year:+$("y").value,sem:+$("s").value,subject:sub,type:$("t").value,title:(titles[i]?.value||f.name).trim(),file:name});
     }
+    if(dId)out.push({year:+$("y").value,sem:+$("s").value,subject:sub,type:$("t").value,title:dTitle||"Google Drive file",drive:"https://drive.google.com/file/d/"+dId+"/view"});
     zip.file("files.json",JSON.stringify(out,null,2));
     msg("Packing...");
     const blob=await zip.generateAsync({type:"blob"});

@@ -166,7 +166,9 @@ let S={year:null,sem:null,subject:null,type:"All",q:""};
 const $=(h)=>{const t=document.createElement("template");t.innerHTML=h.trim();return t.content.firstChild};
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const smooth=()=>matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth";
-const fileUrl=f=>f.url||("files/"+encodeURIComponent(f.file));
+const driveId=u=>{const m=String(u||"").match(/\/d\/([\w-]+)/)||String(u||"").match(/[?&]id=([\w-]+)/);return m?m[1]:""};
+const fileUrl=f=>f.drive?("https://drive.google.com/file/d/"+driveId(f.drive)+"/view"):(f.url||("files/"+encodeURIComponent(f.file)));
+const dlUrl=f=>f.drive?("https://drive.google.com/uc?export=download&id="+driveId(f.drive)):fileUrl(f);
 const fileExt=f=>((f.file||f.url||"").split("?")[0].match(/\.([a-z0-9]{2,5})$/i)||[])[1]||"";
 
 function render(){
@@ -242,7 +244,7 @@ function renderStudent(main){
       r.forEach((f,i)=>{
         const ext=fileExt(f);
         const dn=(f.title.replace(/[^a-z0-9 ._()-]+/gi," ").trim()||"file")+(ext?"."+ext:"");
-        L.append($(`<div class="file${anim?" a":""}" style="--i:${i}"><div><b>${esc(f.title)}</b><span class="badge"><span class="em">${TE[f.type]||"📄"}</span> ${esc(f.type)}</span></div><span class="acts"><a class="btn sm" href="${esc(fileUrl(f))}" target="_blank" rel="noopener">Open</a><a class="btn sm gh" href="${esc(fileUrl(f))}" download="${esc(dn)}">Download</a></span></div>`));
+        L.append($(`<div class="file${anim?" a":""}" style="--i:${i}"><div><b>${esc(f.title)}</b><span class="badge"><span class="em">${TE[f.type]||"📄"}</span> ${esc(f.type)}</span></div><span class="acts"><a class="btn sm" href="${esc(fileUrl(f))}" target="_blank" rel="noopener">Open</a><a class="btn sm gh" href="${esc(dlUrl(f))}" download="${esc(dn)}">Download</a></span></div>`));
       });
       if(!r.length)L.append($(`<div class="empty"><span class="em" style="font-size:34px">🔍</span>Nothing found</div>`));
     }
