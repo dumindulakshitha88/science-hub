@@ -267,11 +267,12 @@ async function sheetFiles(){
     const rows=parseCSV(await r.text()).filter(x=>x.some(v=>v.trim()));
     if(rows.length<2)return [];
     const h=rows[0].map(x=>x.trim().toLowerCase());
-    const ix=n=>h.findIndex(k=>n.includes(k));
+    const ix=n=>h.findIndex(k=>n.some(x=>k.startsWith(x)));
     const iy=ix(["year"]),is=ix(["semester","sem"]),isub=ix(["subject"]),it=ix(["type"]),ititle=ix(["title","name"]),il=ix(["link","url","drive"]);
     return rows.slice(1).map(x=>{
       const link=(x[il]||"").trim(),tt=(x[it]||"").trim();
-      const type=TYPES.find(k=>k.toLowerCase()===tt.toLowerCase())||tt||"Lecture Note";
+      const tl=tt.toLowerCase();
+      const type=tl.startsWith("past")||tl.includes("paper")?"Past Paper":tl.startsWith("tut")?"Tutorial":tl.startsWith("lec")||tl.includes("note")?"Lecture Note":tl.startsWith("ass")||tl.includes("exam")?"Assessment":"Lecture Note";
       const o={year:parseInt(x[iy]),sem:parseInt(x[is]),subject:(x[isub]||"").trim(),type,title:(x[ititle]||"").trim()};
       if(/drive\.google\.com|docs\.google\.com/.test(link))o.drive=link;else o.url=link;
       return o}).filter(f=>f.year>=1&&f.year<=4&&f.sem>=1&&f.sem<=2&&f.subject&&f.title&&(f.drive||f.url));
