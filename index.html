@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Science Faculty Hub</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: sticky nav, rounded hero panel, live stat row, then a 3-step browse flow (year, semester, subject) leading to a file list */
+:root{--bg:#fcf8fb;--surface:#ffffff;--ink:#2a2230;--mu:#6f6478;--line:#efe4ee;--ac:#b84a68;--on-ac:#ffffff;--gold:#d49a3a;--soft:#fbeaf0;--h1:#ffe1eb;--h2:#fff0e0;--h3:#e6e1ff;--ov:linear-gradient(90deg,#fffffff2,#ffffffa6 55%,#ffffff00);--blob:#ffb8cf;--blob2:#bfb6ff;--blob-o:.6;--danger:#c62d33;--fh:"Space Grotesk",system-ui,sans-serif;--fb:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1a1520;--surface:#251e2b;--ink:#f6eef8;--mu:#b3a6bb;--line:#3a2f42;--ac:#f0a1b6;--on-ac:#2a1220;--gold:#f0c27a;--soft:#33263a;--h1:#3a2540;--h2:#4a2a45;--h3:#2e2a4d;--ov:linear-gradient(90deg,#1a1520ee,#1a152099 55%,#1a152000);--blob:#c0577a;--blob2:#5d54b0;--blob-o:.35;--danger:#e5575c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1a1520;--surface:#251e2b;--ink:#f6eef8;--mu:#b3a6bb;--line:#3a2f42;--ac:#f0a1b6;--on-ac:#2a1220;--gold:#f0c27a;--soft:#33263a;--h1:#3a2540;--h2:#4a2a45;--h3:#2e2a4d;--ov:linear-gradient(90deg,#1a1520ee,#1a152099 55%,#1a152000);--blob:#c0577a;--blob2:#5d54b0;--blob-o:.35;--danger:#e5575c;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--fb);overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--surface);z-index:30}
+.wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--fh);margin:0;text-wrap:balance}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+
+/* nav */
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;height:56px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--fh);font-weight:600;font-size:17px;min-width:0}
+.mark{width:30px;height:30px;border-radius:8px;background:var(--ac);color:var(--on-ac);display:grid;place-items:center;font-size:13px;font-weight:700;flex:none;object-fit:cover}
+.nav-links{display:flex;gap:4px}
+.nl{background:none;border:0;padding:8px 12px;border-radius:8px;cursor:pointer;color:var(--mu);font-weight:500}
+.nl:hover{color:var(--ink);background:var(--soft)}
+
+/* hero */
+.hero{position:relative;overflow:hidden;border-radius:20px;background:var(--h1);color:var(--ink);margin-top:20px;min-height:300px;display:flex;align-items:flex-end}
+.sl{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transform:scale(1.12);transition:opacity 1.2s,transform 7s linear}
+.sl.on{opacity:1;transform:scale(1)}
+.ov{position:absolute;inset:0;background:var(--ov)}
+.hc{position:relative;padding:32px;max-width:620px}
+.eyebrow{display:flex;align-items:center;gap:10px;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.9}
+.eyebrow img{width:40px;height:40px;border-radius:50%;background:#fff;padding:3px;object-fit:contain}
+.hero h1{font-size:clamp(32px,6.5vw,52px);line-height:1.04;letter-spacing:-.02em;margin:14px 0 10px}
+.hero p{margin:0 0 6px;font-size:16px;opacity:.92;max-width:48ch}
+.hero small{color:var(--mu)}
+.hbtns{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;align-items:center}
+.pill{display:inline-block;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 12px;font-size:12.5px}
+.stk{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}.st{width:56px;height:56px}
+
+/* buttons */
+.btn{background:var(--ac);color:var(--on-ac);border:0;padding:10px 18px;border-radius:10px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;transition:filter .2s,transform .2s}
+.btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn.light{background:var(--ac);color:var(--on-ac)}
+.btn.del{background:var(--danger);color:#fff}
+.btn.sm{padding:8px 14px}
+.link{background:none;border:0;color:var(--ac);cursor:pointer;padding:0;font-weight:500;text-decoration:underline;text-underline-offset:3px}
+
+/* notice + stats */
+.note{margin-top:14px;padding:10px 14px;border-radius:12px;background:var(--soft);font-size:13.5px;color:var(--mu)}
+.note b{color:var(--ink)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.stat .k{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu)}
+.stat .v{font-family:var(--fh);font-size:34px;font-weight:600;line-height:1.15;font-variant-numeric:tabular-nums;margin-top:2px}
+
+/* browse */
+.sec{margin-top:40px}
+.sec>h2{font-size:clamp(22px,4vw,28px);letter-spacing:-.01em}
+.sec>p{color:var(--mu);margin:4px 0 0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;margin-top:14px}
+.step{display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;align-items:start}
+.step+.step{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+.num{width:34px;height:34px;border-radius:50%;background:var(--soft);color:var(--ac);display:grid;place-items:center;font-family:var(--fh);font-weight:700}
+.step.done .num{background:var(--ac);color:var(--on-ac)}
+.lbl{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);margin:7px 0 10px;font-weight:600}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);padding:8px 16px;border-radius:99px;cursor:pointer;font-weight:500;transition:border-color .2s,background .2s}
+.chip:hover{border-color:var(--ac)}
+.chip.on{background:var(--ac);color:var(--on-ac);border-color:var(--ac)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.card{display:flex;flex-direction:column;gap:2px;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:14px;cursor:pointer;transition:border-color .2s,transform .2s;min-width:0}
+.card:hover{border-color:var(--ac);transform:translateY(-2px)}
+.card.on{border-color:var(--ac);background:var(--soft)}
+.card b{font-family:var(--fh);font-size:16px;overflow-wrap:anywhere}
+.card small{color:var(--mu)}
+.empty{text-align:center;color:var(--mu);padding:26px 0}
+input,select{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;margin-bottom:10px}
+input::placeholder{color:var(--mu)}
+
+/* files */
+.rh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.rh h3{font-size:19px}
+.rh span{color:var(--mu);font-size:13.5px}
+.file{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:10px}
+.file:hover{border-color:var(--gold)}
+.file>div{flex:1;min-width:150px}
+.file b{display:block;overflow-wrap:anywhere}
+.badge{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ac);background:var(--soft);border-radius:6px;padding:2px 8px;margin-top:3px}
+.msg{font-size:14px;color:var(--mu);margin:6px 0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ph2{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.ph2 .th{width:84px;height:62px;border-radius:10px;background-size:cover;background-position:center;position:relative;border:1px solid var(--line)}
+.ph2 .th button{position:absolute;top:2px;right:2px;border:0;border-radius:50%;width:20px;height:20px;background:var(--danger);color:#fff;cursor:pointer;font-size:12px;line-height:1}
+.foot{margin:40px 0 0;padding:18px 0 40px;border-top:1px solid var(--line);font-size:12.5px;color:var(--mu);text-align:center}
+/* motion */
+@keyframes up{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes drop{from{opacity:0;transform:translateY(-100%)}to{opacity:1;transform:none}}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(60px,40px) scale(1.25)}}
+@keyframes pan{from{background-position:0% 50%}to{background-position:100% 50%}}
+@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 #d9708c80}60%{box-shadow:0 0 0 12px #d9708c00}}
+@keyframes bob{50%{transform:translateY(-6px)}}
+@keyframes shine{from{transform:translateX(-150%) skewX(-20deg)}to{transform:translateX(350%) skewX(-20deg)}}
+.hero{background:linear-gradient(120deg,var(--h1),var(--h2) 40%,var(--h3) 75%,var(--h1));background-size:300% 300%;animation:pan 16s ease-in-out infinite alternate}
+.blob{position:absolute;width:260px;height:260px;border-radius:50%;filter:blur(60px);opacity:var(--blob-o);animation:drift 12s ease-in-out infinite}
+.blob.a{background:var(--blob);top:-70px;right:-40px}
+.blob.b{background:var(--blob2);bottom:-110px;left:30%;animation-delay:-5s}
+.eyebrow img{animation:bob 3s ease-in-out infinite}
+.w{display:inline-block}
+.btn.light{position:relative;overflow:hidden;animation:glow 2.6s ease-out infinite}
+.btn.light::after{content:"";position:absolute;top:0;bottom:0;left:0;width:35%;background:linear-gradient(90deg,transparent,#ffffff80,transparent);animation:shine 3.4s 1.2s infinite}
+.stat{transition:transform .25s,border-color .25s}
+.stat:hover{transform:translateY(-4px);border-color:var(--gold)}
+.chip:hover{transform:translateY(-2px)}
+.card{animation:up .4s calc(var(--i,0)*50ms) backwards}
+.file.a{animation:up .35s calc(min(var(--i,0),8)*45ms) backwards}
+.file{transition:transform .25s,border-color .25s}
+.file:hover{transform:translateX(4px)}
+.in{animation:up .4s backwards}
+.vw{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);animation:up .25s backwards}
+.vh{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line);background:var(--surface)}
+.vh b{font-family:var(--fh);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.vb{display:flex;gap:8px;flex:none}
+.btn.gh{background:var(--soft);color:var(--ink)}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+.btn:disabled{opacity:.7;cursor:default}
+.vbody{flex:1;min-height:0;overflow:auto;padding:12px max(12px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;align-items:center;gap:12px}
+.vbody canvas,.vbody img{max-width:100%;height:auto;border-radius:8px;box-shadow:0 2px 12px #00000026;background:#fff}
+@keyframes wig{0%,100%{transform:rotate(0)}20%{transform:rotate(-14deg) scale(1.15)}40%{transform:rotate(12deg)}60%{transform:rotate(-6deg)}80%{transform:rotate(0)}}
+@keyframes flt{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-16px) rotate(8deg)}}
+@keyframes beat{0%,100%{transform:scale(1)}15%{transform:scale(1.3)}30%{transform:scale(1)}45%{transform:scale(1.2)}}
+.em{display:inline-block;animation:wig 2.8s ease-in-out infinite;transform-origin:50% 70%}
+.card:hover .em,.stat:hover .em,.file:hover .em{animation-duration:.7s}
+.fl{position:absolute;z-index:1;font-size:38px;animation:flt 6s ease-in-out infinite;pointer-events:none;user-select:none}
+.f1{right:9%;top:16%}.f2{right:26%;bottom:18%;animation-delay:-2s;font-size:32px}.f3{right:5%;bottom:12%;animation-delay:-4s;font-size:44px}.f4{right:32%;top:10%;animation-delay:-1s;font-size:28px}
+.stat .k .em{margin-right:5px}
+.heart{display:inline-block;animation:beat 1.6s ease-in-out infinite}
+.empty .em{display:block;margin-bottom:4px}
+@media (max-width:640px){.fl{display:none}}
+.step.done .num{animation:pop .45s}
+.intro .nav{animation:drop .6s backwards}
+.intro .hero{animation:up .7s .1s backwards,pan 16s ease-in-out infinite alternate}
+.intro .eyebrow{animation:up .6s .3s backwards}
+.intro .w{animation:up .7s calc(.4s + var(--i)*.12s) backwards}
+.intro .hc p,.intro .hc small{animation:up .6s .85s backwards}
+.intro .hbtns{animation:up .6s 1s backwards}
+.intro .note{animation:up .6s .9s backwards}
+.intro .stat{animation:up .6s calc(.9s + var(--i)*.09s) backwards}
+.intro #browse{animation:up .7s 1.3s backwards}
+@media (max-width:520px){.hc{padding:24px 20px}.hero{min-height:280px}.row{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.acts a.btn{text-decoration:none}
+.hero .logo{display:none}
+body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+</style></head><body>
+<div id="app"></div>
+<script>
+const TYPES=["Past Paper","Tutorial","Lecture Note","Assessment"];
+const TE={"Past Paper":"📝","Tutorial":"📘","Lecture Note":"📚","Assessment":"🧪"};
+let files=[],loaded=false,failed=false,intro=true,introT=null;
+let S={year:null,sem:null,subject:null,type:"All",q:""};
+const $=(h)=>{const t=document.createElement("template");t.innerHTML=h.trim();return t.content.firstChild};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const smooth=()=>matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth";
+const fileUrl=f=>f.url||("files/"+encodeURIComponent(f.file));
+const fileExt=f=>((f.file||f.url||"").split("?")[0].match(/\.([a-z0-9]{2,5})$/i)||[])[1]||"";
+
+function render(){
+  const y=window.scrollY;
+  const app=document.getElementById("app");
+  app.innerHTML="";
+  if(loaded&&!introT)introT=setTimeout(()=>{intro=false},2400);
+  app.className=intro?"intro":"";
+  app.append(navEl());
+  const main=document.createElement("main");main.className="wrap";app.append(main);
+  main.append(hero());
+  main.append($(`<div class="note"><b>Unofficial site.</b> This is a student-made website and is not an official website of Eastern University, Sri Lanka or its Faculty of Science.</div>`));
+  renderStudent(main);
+  main.append($(`<footer class="foot"><span class="heart">💛</span> Student-made, unofficial resource hub. Not affiliated with or endorsed by Eastern University, Sri Lanka. Please verify important information with the faculty.</footer>`));
+  window.scrollTo(0,y);
+}
+function goBrowse(){const b=document.getElementById("browse");if(b)b.scrollIntoView({behavior:smooth()})}
+function navEl(){
+  const n=$(`<nav class="nav"><div class="wrap"><div class="brand"><span class="mark">SH</span><span>Science Faculty Hub</span></div><div class="nav-links"><button class="nl" id="n1">Resources</button></div></div></nav>`);
+  n.querySelector("#n1").onclick=goBrowse;
+  return n;
+}
+function hero(){
+  const h=$(`<section class="hero"><div class="blob a"></div><div class="blob b"></div><span class="fl f1" aria-hidden="true">🔬</span><span class="fl f2" aria-hidden="true">🧪</span><span class="fl f3" aria-hidden="true">🔭</span><span class="fl f4" aria-hidden="true">🧬</span><div class="ov"></div><div class="hc"></div></section>`);
+  h.querySelector(".hc").innerHTML=`<div class="eyebrow"><span class="em" style="font-size:24px">🎓</span><span>Eastern University, Sri Lanka · Faculty of Science</span></div><h1><span class="w" style="--i:0">Science</span> <span class="w" style="--i:1">Faculty</span> <span class="w" style="--i:2">Hub</span></h1><p>Past papers, tutorials and lecture notes for every year and semester, in one place.</p><small>Vantharumoolai, Chenkalady</small><div class="hbtns"><button class="btn light" id="go">Browse resources</button><span class="pill">Unofficial · student-made</span></div>`;
+  h.querySelector("#go").onclick=goBrowse;
+  return h;
+}
+function stats(){
+  const subs=new Set(files.map(f=>f.year+"-"+f.sem+"-"+f.subject)).size;
+  const c=t=>files.filter(f=>f.type===t).length;
+  const items=[["Files",files.length,"📚"],["Subjects",subs,"🧬"],["Past papers",c("Past Paper"),"📝"],["Lecture notes",c("Lecture Note"),"💡"]];
+  const el=$(`<div class="stats">${items.map(([k,v,e],i)=>`<div class="stat" style="--i:${i}"><div class="k"><span class="em">${e}</span>${k}</div><div class="v" data-n="${v}">${loaded?v:"–"}</div></div>`).join("")}</div>`);
+  if(intro&&loaded)el.querySelectorAll(".v").forEach(v=>{const n=+v.dataset.n;if(!n)return;v.textContent="0";const t0=performance.now();const tick=now=>{const p=Math.min(1,(now-t0)/1100);v.textContent=Math.round(n*(1-Math.pow(1-p,3)));if(p<1&&v.isConnected)requestAnimationFrame(tick)};requestAnimationFrame(tick)});
+  return el;
+}
+function chip(t,on,fn){const b=$(`<button class="chip${on?" on":""}" aria-pressed="${on}">${esc(t)}</button>`);b.onclick=fn;return b}
+function renderStudent(main){
+  main.append(stats());
+  const sec=$(`<section class="sec" id="browse"><h2>Find your resources</h2><p>Pick your year and semester, then choose a subject.</p><div class="panel"></div></section>`);
+  const panel=sec.querySelector(".panel");
+  const s1=$(`<div class="step${S.year?" done":""}"><div class="num">1</div><div><p class="lbl">Year</p><div class="chips"></div></div></div>`);
+  [1,2,3,4].forEach(n=>s1.querySelector(".chips").append(chip("Year "+n,S.year===n,()=>{S={...S,year:n,sem:null,subject:null};render()})));
+  panel.append(s1);
+  if(S.year){
+    const s2=$(`<div class="step in${S.sem?" done":""}"><div class="num">2</div><div><p class="lbl">Semester</p><div class="chips"></div></div></div>`);
+    [1,2].forEach(n=>s2.querySelector(".chips").append(chip("Semester "+n,S.sem===n,()=>{S={...S,sem:n,subject:null};render()})));
+    panel.append(s2);
+  }
+  if(S.year&&S.sem){
+    const inSem=files.filter(f=>f.year==S.year&&f.sem==S.sem);
+    const subs=[...new Set(inSem.map(f=>f.subject))].sort();
+    const s3=$(`<div class="step in${S.subject?" done":""}"><div class="num">3</div><div><p class="lbl">Subject</p><div class="grid"></div></div></div>`);
+    const grid=s3.querySelector(".grid");
+    subs.forEach((sub,i)=>{
+      const n=inSem.filter(f=>f.subject===sub).length;
+      const c=$(`<button class="card${S.subject===sub?" on":""}" style="--i:${i}"><span class="em" style="font-size:26px">${["🔬","🧬","⚗️","🧮","🌿","🔭"][i%6]}</span><b>${esc(sub)}</b><small>${n} ${n===1?"file":"files"}</small></button>`);
+      c.onclick=()=>{S.subject=sub;S.type="All";S.q="";render()};grid.append(c);
+    });
+    if(!subs.length) s3.lastElementChild.append($(`<div class="empty">${failed?`<span class="em" style="font-size:34px">⚠️</span>Could not load the file list. Please refresh.`:loaded?`<span class="em" style="font-size:34px">📭</span>No files here yet`:`<span class="em" style="font-size:34px">⏳</span>Loading...`}</div>`));
+    panel.append(s3);
+  }
+  main.append(sec);
+  if(S.subject){
+    const box=$(`<div class="panel in"><div class="rh"><h3>${esc(S.subject)}</h3><span>Year ${S.year} · Semester ${S.sem}</span></div><div class="chips" style="margin-top:12px"></div><input id="q" placeholder="Search files..." style="margin-top:12px" value="${esc(S.q)}"><div class="list"></div></div>`);
+    ["All",...TYPES].forEach(t=>box.querySelector(".chips").append(chip((TE[t]?TE[t]+" ":"✨ ")+t,S.type===t,()=>{S.type=t;render()})));
+    const inp=box.querySelector("input");
+    inp.oninput=()=>{S.q=inp.value;list(false)};
+    main.append(box);
+    function list(anim){
+      const L=box.querySelector(".list");L.innerHTML="";
+      const r=files.filter(f=>f.year==S.year&&f.sem==S.sem&&f.subject===S.subject&&(S.type==="All"||f.type===S.type)&&f.title.toLowerCase().includes(S.q.toLowerCase()));
+      r.forEach((f,i)=>{
+        const ext=fileExt(f);
+        const dn=(f.title.replace(/[^a-z0-9 ._()-]+/gi," ").trim()||"file")+(ext?"."+ext:"");
+        L.append($(`<div class="file${anim?" a":""}" style="--i:${i}"><div><b>${esc(f.title)}</b><span class="badge"><span class="em">${TE[f.type]||"📄"}</span> ${esc(f.type)}</span></div><span class="acts"><a class="btn sm" href="${esc(fileUrl(f))}" target="_blank" rel="noopener">Open</a><a class="btn sm gh" href="${esc(fileUrl(f))}" download="${esc(dn)}">Download</a></span></div>`));
+      });
+      if(!r.length)L.append($(`<div class="empty"><span class="em" style="font-size:34px">🔍</span>Nothing found</div>`));
+    }
+    list(true);
+  }
+}
+render();
+fetch("files.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{files=Array.isArray(d)?d:[];loaded=true;render()}).catch(()=>{failed=true;loaded=true;render()});
+</script>
+</body></html>
